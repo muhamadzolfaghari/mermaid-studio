@@ -1,9 +1,12 @@
+/* ==========================================================================
+   Canvas Pane & CAD Stage
+   ========================================================================== */
 .canvas-pane {
   display: flex;
   flex: 1;
   position: relative;
   overflow: hidden;
-  background-color: #070c16;
+  background-color: var(--canvas-bg);
   min-width: 0;
   min-height: 0;
 }
@@ -17,7 +20,7 @@
   overscroll-behavior: none;
   touch-action: none;
   user-select: none;
-  background-color: #070c16;
+  background-color: var(--canvas-bg);
   background-image: radial-gradient(#1e2f47 1.25px, transparent 1.25px);
   background-size: 24px 24px;
   background-position: 0px 0px;
@@ -38,6 +41,10 @@
   cursor: grabbing !important;
 }
 
+.stage.select-mode {
+  cursor: default !important;
+}
+
 /* Transform Canvas */
 .canvas {
   position: absolute;
@@ -51,7 +58,7 @@
 #diagram-container {
   position: relative;
   display: inline-block;
-  padding: 40px;
+  padding: 48px;
 }
 
 #diagram-container svg {
@@ -59,7 +66,7 @@
   max-width: none !important;
   height: auto;
   pointer-events: auto;
-  filter: drop-shadow(0 8px 30px rgba(0, 0, 0, 0.5));
+  filter: drop-shadow(0 12px 36px rgba(0, 0, 0, 0.55));
 }
 
 #diagram-container.is-gantt svg {
@@ -67,193 +74,258 @@
   min-width: 2800px;
 }
 
-/* Floating Controls (Top Canvas Bar) */
-.canvas-hud-top {
+/* ==========================================================================
+   Floating Canvas Dock Island (Signature Mermaid Chart / Mermaid.ai Dock)
+   ========================================================================== */
+.canvas-dock {
   position: absolute;
-  top: 14px;
-  left: 16px;
-  right: 16px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  pointer-events: none;
-  z-index: 6;
-  gap: 12px;
-}
-
-.hud-group {
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
   display: flex;
   align-items: center;
-  gap: 6px;
-  background: rgba(13, 21, 35, 0.88);
-  border: 1px solid var(--line);
+  gap: 4px;
+  background: rgba(14, 22, 38, 0.88);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   padding: 5px 8px;
-  border-radius: 9px;
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.35);
+  border-radius: 999px;
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.55), 0 0 1px rgba(255, 255, 255, 0.2);
+  z-index: 10;
   pointer-events: auto;
 }
 
-.hud-btn {
+.dock-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 5px;
-  height: 28px;
+  height: 32px;
+  min-width: 32px;
   padding: 0 8px;
-  border-radius: 6px;
-  font-size: 11px;
+  border-radius: 999px;
+  font-size: 12px;
   font-weight: 600;
-  color: #cbd7e8;
+  color: #cbd5e1;
   background: transparent;
   border: 1px solid transparent;
   transition: all 0.15s ease;
+  white-space: nowrap;
 }
 
-.hud-btn:hover {
-  background: var(--surface-3);
-  border-color: var(--line-strong);
+.dock-btn:hover {
+  background: var(--surface-hover);
   color: #fff;
+  border-color: rgba(255, 255, 255, 0.08);
 }
 
-.hud-btn.active-mode {
-  background: #19345f;
-  border-color: #426da9;
-  color: #93c5fd;
+.dock-btn.active {
+  background: var(--primary);
+  color: #fff;
+  box-shadow: 0 2px 10px var(--primary-glow);
 }
 
-.hud-btn-icon {
-  width: 28px;
+.dock-btn-icon {
+  width: 32px;
   padding: 0;
   font-size: 14px;
 }
 
-.hud-select {
-  height: 28px;
-  padding: 0 8px;
-  border-radius: 6px;
+.dock-separator {
+  width: 1px;
+  height: 20px;
+  background: rgba(255, 255, 255, 0.12);
+  margin: 0 2px;
+}
+
+.dock-zoom-label {
+  font-family: var(--font-mono);
   font-size: 11px;
   font-weight: 600;
-  color: #cbd7e8;
-  background: var(--surface-2);
-  border: 1px solid var(--line);
+  color: #e2e8f0;
+  min-width: 44px;
+  text-align: center;
   cursor: pointer;
-  appearance: none;
+  padding: 4px 6px;
+  border-radius: 6px;
   transition: all 0.15s ease;
 }
 
-.hud-select:hover {
-  border-color: var(--line-strong);
+.dock-zoom-label:hover {
+  background: var(--surface-hover);
   color: #fff;
 }
 
-.zoom-label {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 44px;
-  height: 28px;
-  font-size: 11px;
-  font-family: var(--font-mono);
-  font-weight: 600;
-  color: var(--text-muted);
-  user-select: none;
+/* ==========================================================================
+   Live MiniMap HUD Navigator
+   ========================================================================== */
+.minimap-container {
+  position: absolute;
+  bottom: 24px;
+  right: 24px;
+  width: 190px;
+  background: rgba(14, 22, 38, 0.92);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
+  z-index: 9;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
-/* Floating Bottom Shortcut Bar */
-.canvas-shortcuts-hint {
-  position: absolute;
-  bottom: 14px;
-  right: 16px;
+.minimap-header {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 6px 12px;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  background: rgba(10, 17, 30, 0.88);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  color: var(--text-subtle);
+  justify-content: space-between;
+  padding: 6px 10px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.minimap-title {
   font-size: 10px;
-  pointer-events: none;
-  z-index: 6;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
 }
 
-.canvas-shortcuts-hint kbd {
-  display: inline-block;
-  padding: 1px 5px;
-  border: 1px solid #41536c;
-  border-bottom-width: 2px;
+.minimap-close {
+  font-size: 11px;
+  color: var(--text-muted);
+  width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   border-radius: 4px;
-  background: #172338;
-  color: #d8e3f2;
-  font-family: var(--font-mono);
-  font-size: 9px;
 }
 
-/* Error / Info Toast Banners */
+.minimap-close:hover {
+  background: var(--surface-hover);
+  color: #fff;
+}
+
+.minimap-viewport {
+  position: relative;
+  width: 100%;
+  height: 110px;
+  background: #060911;
+  overflow: hidden;
+  cursor: crosshair;
+}
+
+.minimap-content {
+  width: 100%;
+  height: 100%;
+  opacity: 0.55;
+  pointer-events: none;
+}
+
+.minimap-rect {
+  position: absolute;
+  top: 0;
+  left: 0;
+  border: 1.5px solid var(--primary);
+  background: rgba(99, 102, 241, 0.2);
+  border-radius: 3px;
+  pointer-events: none;
+  box-shadow: 0 0 6px var(--primary-glow);
+}
+
+/* ==========================================================================
+   Syntax Alert Banner
+   ========================================================================== */
 .canvas-alert {
   position: absolute;
-  top: 60px;
+  top: 16px;
   left: 50%;
-  transform: translateX(-50%);
-  display: none;
-  max-width: min(680px, calc(100% - 32px));
-  padding: 10px 16px;
-  border-radius: 8px;
-  font-size: 12px;
-  line-height: 1.5;
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  z-index: 20;
-  animation: slideDown 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-.canvas-alert.show {
+  transform: translateX(-50%) translateY(-20px);
   display: flex;
   align-items: center;
   gap: 12px;
-}
-
-.canvas-alert.error {
-  background: rgba(43, 16, 23, 0.95);
+  padding: 10px 16px;
+  border-radius: 10px;
+  font-size: 12px;
+  font-weight: 500;
+  background: rgba(43, 20, 25, 0.94);
   border: 1px solid var(--danger-border);
-  color: #fecdd3;
+  color: #fca5a5;
+  backdrop-filter: blur(12px);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
+  opacity: 0;
+  pointer-events: none;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  z-index: 20;
+  max-width: 90%;
 }
 
-.canvas-alert.info {
-  background: rgba(16, 33, 58, 0.95);
-  border: 1px solid #2f5385;
-  color: #dbeafe;
+.canvas-alert.show {
+  transform: translateX(-50%) translateY(0);
+  opacity: 1;
+  pointer-events: auto;
 }
 
 .alert-message {
-  flex: 1;
+  line-height: 1.4;
+  white-space: pre-wrap;
   word-break: break-word;
 }
 
 .alert-close {
-  padding: 4px;
-  border-radius: 4px;
-  color: inherit;
-  opacity: 0.7;
-  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 5px;
+  color: #fca5a5;
+  font-size: 13px;
 }
 
 .alert-close:hover {
-  opacity: 1;
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
 }
 
-@keyframes slideDown {
-  from {
-    opacity: 0;
-    transform: translate(-50%, -10px);
+/* Bottom Left Shortcuts Hint */
+.canvas-shortcuts-hint {
+  position: absolute;
+  bottom: 24px;
+  left: 24px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 11px;
+  color: var(--text-subtle);
+  pointer-events: none;
+  z-index: 5;
+}
+
+.canvas-shortcuts-hint kbd {
+  display: inline-block;
+  padding: 2px 5px;
+  border-radius: 4px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: 10px;
+}
+
+@media (max-width: 768px) {
+  .canvas-dock {
+    bottom: 60px;
+    padding: 4px 6px;
+    max-width: 95%;
+    overflow-x: auto;
   }
-  to {
-    opacity: 1;
-    transform: translate(-50%, 0);
+  .minimap-container {
+    display: none !important;
+  }
+  .canvas-shortcuts-hint {
+    display: none !important;
   }
 }

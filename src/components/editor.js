@@ -1,7 +1,7 @@
 /**
  * Code editor component for Mermaid Studio
  * Provides a monospaced textarea with synchronized line numbers,
- * tab indentation, line/char counters, and debounced input events.
+ * tab indentation, line/col tracking, snippet insertion, code formatting, and debounced input events.
  */
 
 export class EditorController {
@@ -11,6 +11,7 @@ export class EditorController {
     this.statusDot = options.statusDot;
     this.statusText = options.statusText;
     this.statsEl = options.statsEl;
+    this.typeBadgeEl = options.typeBadgeEl;
     this.onChange = options.onChange || (() => {});
 
     this.debounceTimer = null;
@@ -23,6 +24,7 @@ export class EditorController {
   init() {
     this.updateLineNumbers();
     this.updateStats();
+    this.updateTypeBadge();
 
     // Sync scroll
     this.textarea.addEventListener('scroll', () => {
@@ -33,8 +35,14 @@ export class EditorController {
     this.textarea.addEventListener('input', () => {
       this.updateLineNumbers();
       this.updateStats();
+      this.updateTypeBadge();
       this.handleInputDebounced();
     });
+
+    // Cursor position tracking
+    const updateCursor = () => this.updateStats();
+    this.textarea.addEventListener('click', updateCursor);
+    this.textarea.addEventListener('keyup', updateCursor);
 
     // Key handling (Tab indentation & shortcuts)
     this.textarea.addEventListener('keydown', (e) => {
@@ -76,7 +84,7 @@ export class EditorController {
     clearTimeout(this.debounceTimer);
     this.debounceTimer = setTimeout(() => {
       this.onChange(this.getValue());
-    }, 220);
+    }, 200);
   }
 
   getValue() {
@@ -87,7 +95,77 @@ export class EditorController {
     this.textarea.value = code;
     this.updateLineNumbers();
     this.updateStats();
+    this.updateTypeBadge();
     this.onChange(code);
+  }
+
+  insertSnippet(text) {
+    const start = this.textarea.selectionStart;
+    const end = this.textarea.selectionEnd;
+    const val = this.textarea.value;
+
+    this.textarea.value = val.substring(0, start) + text + val.substring(end);
+    this.textarea.selectionStart = this.textarea.selectionEnd = start + text.length;
+    this.textarea.focus();
+
+    this.updateLineNumbers();
+    this.updateStats();
+    this.handleInputDebounced();
+  }
+
+  formatCode() {
+    const raw = this.textarea.value;
+    const lines = raw.split('\n');
+    let indentLevel = 0;
+    const formatted = [];
+
+    for (let line of lines) {
+      const trimmed = line.trim();
+      if (!trimmed) {
+        // Keep single blank line max
+        if (formatted.length > 0 && formatted[formatted.length - 1] !== '') {
+          formatted.push('');
+        }
+        continue;
+      }
+
+      // Check closing subgraphs / blocks
+      if (trimmed.startsWith('end')) {
+        indentLevel = Math.max(0, indentLevel - 1);
+      }
+
+      const indent = '  '.repeat(indentLevel);
+      formatted.push(`${indent}${trimmed}`);
+
+      // Check opening subgraphs / blocks
+      if (trimmed.startsWith('subgraph ') || trimmed.startsWith('rect ') || trimmed.startsWith('opt ') || trimmed.startsWith('loop ')) {
+        indentLevel++;
+      }
+    }
+
+    this.setValue(formatted.join('\n'));
+  }
+
+  updateTypeBadge() {
+    if (!this.typeBadgeEl) return;
+    const code = this.textarea.value;
+    const clean = code.replace(/---[\s\S]*?---/, '').trim();
+    const firstLine = clean.split('\n')[0] || '';
+
+    let type = 'Diagram';
+    if (/^flowchart/i.test(firstLine)) type = 'Flowchart';
+    else if (/^graph/i.test(firstLine)) type = 'Graph';
+    else if (/^sequenceDiagram/i.test(firstLine)) type = 'Sequence';
+    else if (/^classDiagram/i.test(firstLine)) type = 'Class Diagram';
+    else if (/^stateDiagram/i.test(firstLine)) type = 'State Machine';
+    else if (/^erDiagram/i.test(firstLine)) type = 'ER Schema';
+    else if (/^gitGraph/i.test(firstLine)) type = 'Git Graph';
+    else if (/^gantt/i.test(firstLine)) type = 'Gantt';
+    else if (/^mindmap/i.test(firstLine)) type = 'Mindmap';
+    else if (/^pie/i.test(firstLine)) type = 'Pie Chart';
+    else if (/^architecture/i.test(firstLine)) type = 'Architecture';
+
+    this.typeBadgeEl.textContent = type;
   }
 
   updateLineNumbers() {
@@ -103,8 +181,15 @@ export class EditorController {
     const code = this.textarea.value;
     const lines = code.split('\n').length;
     const chars = code.length;
+
+    // Calculate cursor position
+    const pos = this.textarea.selectionStart || 0;
+    const textBefore = code.substring(0, pos);
+    const lineIndex = textBefore.split('\n').length;
+    const colIndex = pos - textBefore.lastIndexOf('\n');
+
     if (this.statsEl) {
-      this.statsEl.textContent = `Lines: ${lines} | Chars: ${chars}`;
+      this.statsEl.textContent = `Ln ${lineIndex}, Col ${colIndex} | ${lines} lines, ${chars} chars`;
     }
   }
 
