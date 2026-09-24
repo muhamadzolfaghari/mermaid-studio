@@ -1,0 +1,36 @@
+---
+config:
+  theme: dark
+  flowchart:
+    useMaxWidth: false
+    curve: basis
+    nodeSpacing: 45
+    rankSpacing: 75
+---
+flowchart LR
+    INFRA[Infrastructure baseline]
+    SPLP[Shared PLP]
+    SPDP[Shared PDP]
+    PASS[Passenger shared]
+    PLP[Parallel service PLPs]
+    PDP[Parallel service PDPs]
+    REVIEW[Parallel service Reviews]
+    TRIPS[My Trips by service]
+    DONE{{All services complete}}
+
+    INFRA --> SPLP --> PLP
+    INFRA --> SPDP --> PDP
+    INFRA --> PASS
+    PLP -->|QA Gate| PDP
+    PDP -->|QA Gate| REVIEW
+    PASS --> REVIEW
+    REVIEW -->|QA Gate| TRIPS -->|QA Gate| DONE
+
+    classDef infra fill:#202a35,stroke:#94a3b8,color:#fff,stroke-width:3px
+    classDef shared fill:#2e2050,stroke:#8b5cf6,color:#fff,stroke-width:2px
+    classDef service fill:#123448,stroke:#0ea5e9,color:#fff,stroke-width:2px
+    classDef milestone fill:#111827,stroke:#f8fafc,color:#fff,stroke-width:2px
+    class INFRA infra
+    class SPLP,SPDP,PASS shared
+    class PLP,PDP,REVIEW,TRIPS service
+    class DONE milestone

@@ -1,0 +1,259 @@
+.canvas-pane {
+  display: flex;
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+  background-color: #070c16;
+  min-width: 0;
+  min-height: 0;
+}
+
+/* CAD / Figma-like Interactive Stage */
+.stage {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  cursor: grab;
+  overscroll-behavior: none;
+  touch-action: none;
+  user-select: none;
+  background-color: #070c16;
+  background-image: radial-gradient(#1e2f47 1.25px, transparent 1.25px);
+  background-size: 24px 24px;
+  background-position: 0px 0px;
+}
+
+.stage.grid-lines {
+  background-image: 
+    linear-gradient(to right, rgba(37, 53, 77, 0.4) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(37, 53, 77, 0.4) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+
+.stage.grid-none {
+  background-image: none;
+}
+
+.stage.grabbing {
+  cursor: grabbing !important;
+}
+
+/* Transform Canvas */
+.canvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  transform-origin: 0 0;
+  will-change: transform;
+  pointer-events: auto;
+}
+
+#diagram-container {
+  position: relative;
+  display: inline-block;
+  padding: 40px;
+}
+
+#diagram-container svg {
+  display: block;
+  max-width: none !important;
+  height: auto;
+  pointer-events: auto;
+  filter: drop-shadow(0 8px 30px rgba(0, 0, 0, 0.5));
+}
+
+#diagram-container.is-gantt svg {
+  width: 2800px !important;
+  min-width: 2800px;
+}
+
+/* Floating Controls (Top Canvas Bar) */
+.canvas-hud-top {
+  position: absolute;
+  top: 14px;
+  left: 16px;
+  right: 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  pointer-events: none;
+  z-index: 6;
+  gap: 12px;
+}
+
+.hud-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(13, 21, 35, 0.88);
+  border: 1px solid var(--line);
+  padding: 5px 8px;
+  border-radius: 9px;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.35);
+  pointer-events: auto;
+}
+
+.hud-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  height: 28px;
+  padding: 0 8px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #cbd7e8;
+  background: transparent;
+  border: 1px solid transparent;
+  transition: all 0.15s ease;
+}
+
+.hud-btn:hover {
+  background: var(--surface-3);
+  border-color: var(--line-strong);
+  color: #fff;
+}
+
+.hud-btn.active-mode {
+  background: #19345f;
+  border-color: #426da9;
+  color: #93c5fd;
+}
+
+.hud-btn-icon {
+  width: 28px;
+  padding: 0;
+  font-size: 14px;
+}
+
+.hud-select {
+  height: 28px;
+  padding: 0 8px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #cbd7e8;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  cursor: pointer;
+  appearance: none;
+  transition: all 0.15s ease;
+}
+
+.hud-select:hover {
+  border-color: var(--line-strong);
+  color: #fff;
+}
+
+.zoom-label {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 28px;
+  font-size: 11px;
+  font-family: var(--font-mono);
+  font-weight: 600;
+  color: var(--text-muted);
+  user-select: none;
+}
+
+/* Floating Bottom Shortcut Bar */
+.canvas-shortcuts-hint {
+  position: absolute;
+  bottom: 14px;
+  right: 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(10, 17, 30, 0.88);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  color: var(--text-subtle);
+  font-size: 10px;
+  pointer-events: none;
+  z-index: 6;
+}
+
+.canvas-shortcuts-hint kbd {
+  display: inline-block;
+  padding: 1px 5px;
+  border: 1px solid #41536c;
+  border-bottom-width: 2px;
+  border-radius: 4px;
+  background: #172338;
+  color: #d8e3f2;
+  font-family: var(--font-mono);
+  font-size: 9px;
+}
+
+/* Error / Info Toast Banners */
+.canvas-alert {
+  position: absolute;
+  top: 60px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: none;
+  max-width: min(680px, calc(100% - 32px));
+  padding: 10px 16px;
+  border-radius: 8px;
+  font-size: 12px;
+  line-height: 1.5;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  z-index: 20;
+  animation: slideDown 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.canvas-alert.show {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.canvas-alert.error {
+  background: rgba(43, 16, 23, 0.95);
+  border: 1px solid var(--danger-border);
+  color: #fecdd3;
+}
+
+.canvas-alert.info {
+  background: rgba(16, 33, 58, 0.95);
+  border: 1px solid #2f5385;
+  color: #dbeafe;
+}
+
+.alert-message {
+  flex: 1;
+  word-break: break-word;
+}
+
+.alert-close {
+  padding: 4px;
+  border-radius: 4px;
+  color: inherit;
+  opacity: 0.7;
+  cursor: pointer;
+}
+
+.alert-close:hover {
+  opacity: 1;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -10px);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+}

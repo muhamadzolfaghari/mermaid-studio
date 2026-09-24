@@ -1,0 +1,43 @@
+---
+config:
+  gantt:
+    useWidth: 2000
+    barHeight: 28
+    barGap: 10
+    topPadding: 60
+    leftPadding: 220
+    gridLineStartPadding: 45
+  theme: dark
+---
+gantt
+    title PLP Shared — Resource Delivery Sequence
+    dateFormat YYYY-MM-DD HH:mm
+    axisFormat %d %b
+
+    section Infrastructure
+    Infrastructure foundation              :infra, 2026-09-22 09:00, 40h
+
+    section Hossein
+    SellCalendarPrice                       :hcalendar, 2026-09-24 09:00, 7h
+    SearchForm                              :hsearch, after hcalendar, 14h
+
+    section Elham
+    PlpHafHashtadSuggestion                 :esuggestion, 2026-09-24 09:00, 2h
+    ActionPrice                             :eaction, after esuggestion, 4h
+    HotelRating                             :erating, after eaction, 2h
+    PlpCardSlider                           :eslider, after erating, 2h
+    LogoContainer                           :elogo, after eslider, 10h
+    TourismWebPlpCard                       :ecard, after elogo, 21h
+    FilterExpandableList                    :efilter, after ecard, 7h
+
+    section Reza
+    BundleCardsWeb                          :rbundle, 2026-09-24 09:00, 14h
+
+    section QA Gate
+    PLP Shared complete                     :milestone, sharedDone, after hsearch efilter rbundle, 0h
+    QA Team                                 :qa, after sharedDone, 8h
+    Design QA                               :designqa, after qa, 4h
+    EM QA                                   :emqa, after designqa, 2h
+    PM QA                                   :pmqa, after emqa, 2h
+    CI/CD                                   :cicd, after pmqa, 6h
+    PLP Shared ready                        :milestone, ready, after cicd, 0h

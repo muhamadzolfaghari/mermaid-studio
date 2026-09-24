@@ -1,0 +1,193 @@
+---
+config:
+  theme: dark
+  flowchart:
+    useMaxWidth: false
+    curve: basis
+    nodeSpacing: 40
+    rankSpacing: 70
+---
+flowchart LR
+    INFRA[Infrastructure baseline]
+
+    subgraph SharedPLP[Shared PLP dependencies]
+        direction TB
+        PLPCARD[PLP card foundation<br/>TourismWebPlpCard + ActionPrice]
+        PLPFILTER[Search and filter foundation<br/>SearchForm + FilterExpandableList]
+        CALENDAR[CalendarPrice]
+        LOGO[LogoContainer]
+        HOTELPLPUI[Hotel and tour card UI<br/>HotelRating + PlpCardSlider]
+        BUNDLE[BundleCardsWeb]
+        SUGGESTION[Suggestion component]
+    end
+
+    subgraph SharedPDP[Shared PDP dependencies]
+        direction TB
+        GALLERY[Gallery]
+        TRANSPORT[TransportDetails]
+        HERO[HeroSection]
+        SHOWMORE[ResultListShowMore]
+        REVIEWFOUNDATION[Review foundation<br/>PriceSummary + BookingDetailSection<br/>+ BookingDetails]
+    end
+
+    subgraph Passenger[Passenger dependency]
+        direction TB
+        PASSENGER[Passenger shared]
+    end
+
+    subgraph Bus[Bus — parallel service flow]
+        direction LR
+        BUSPLP[Bus PLP] -->|QA Gate| BUSPDP[Bus PDP]
+        BUSPDP -->|QA Gate| BUSREVIEW[Bus Review]
+        BUSREVIEW -->|QA Gate| BUSTRIPS[Bus My Trips]
+        BUSTRIPS -->|QA Gate| BUSDONE{{Bus complete}}
+    end
+
+    subgraph Train[Train — parallel service flow]
+        direction LR
+        TRAINPLP[Train PLP] -->|QA Gate| TRAINPDP[Train PDP]
+        TRAINPDP -->|QA Gate| TRAINREVIEW[Train Review]
+        TRAINREVIEW -->|QA Gate| TRAINTRIPS[Train My Trips]
+        TRAINTRIPS -->|QA Gate| TRAINDONE{{Train complete}}
+    end
+
+    subgraph Flight[Flight — parallel service flow]
+        direction LR
+        FLIGHTPLP[Flight PLP] -->|QA Gate| FLIGHTPDP[Flight PDP]
+        FLIGHTPDP -->|QA Gate| FLIGHTREVIEW[Flight Review]
+        FLIGHTREVIEW -->|QA Gate| FLIGHTTRIPS[Flight My Trips]
+        FLIGHTTRIPS -->|QA Gate| FLIGHTDONE{{Flight complete}}
+    end
+
+    subgraph IntlFlight[Intl Flight — parallel service flow]
+        direction LR
+        INTLPLP[Intl Flight PLP] -->|QA Gate| INTLPDP[Intl Flight PDP]
+        INTLPDP -->|QA Gate| INTLREVIEW[Intl Flight Review]
+        INTLREVIEW -->|QA Gate| INTLTRIPS[Intl Flight My Trips]
+        INTLTRIPS -->|QA Gate| INTLDONE{{Intl Flight complete}}
+    end
+
+    subgraph Hotel[Hotel — parallel service flow]
+        direction LR
+        HOTELPLP[Hotel PLP] -->|QA Gate| HOTELPDP[Hotel PDP]
+        HOTELPDP -->|QA Gate| HOTELREVIEW[Hotel Review]
+        HOTELREVIEW -->|QA Gate| HOTELTRIPS[Hotel My Trips]
+        HOTELTRIPS -->|QA Gate| HOTELDONE{{Hotel complete}}
+    end
+
+    subgraph Tour[Tour family — parallel service flow]
+        direction LR
+        TOURPLP[Tour-family PLP] -->|QA Gate| TOURPDP[Tour-family PDP]
+        TOURPDP -->|QA Gate| TOURREVIEW[Tour-family Review]
+        TOURREVIEW -->|QA Gate| TOURTRIPS[Tour My Trips]
+        TOURTRIPS -->|QA Gate| TOURDONE{{Tour complete}}
+    end
+
+    ALLDONE{{All services complete}}
+
+    %% Infrastructure globally blocks shared foundations and service work.
+    INFRA --> PLPCARD
+    INFRA --> PLPFILTER
+    INFRA --> CALENDAR
+    INFRA --> LOGO
+    INFRA --> HOTELPLPUI
+    INFRA --> BUNDLE
+    INFRA --> SUGGESTION
+    INFRA --> GALLERY
+    INFRA --> TRANSPORT
+    INFRA --> HERO
+    INFRA --> SHOWMORE
+    INFRA --> REVIEWFOUNDATION
+    INFRA --> PASSENGER
+
+    %% Shared PLP consumers.
+    PLPCARD --> BUSPLP
+    PLPCARD --> TRAINPLP
+    PLPCARD --> FLIGHTPLP
+    PLPCARD --> INTLPLP
+    PLPCARD --> HOTELPLP
+    PLPCARD --> TOURPLP
+
+    PLPFILTER --> BUSPLP
+    PLPFILTER --> TRAINPLP
+    PLPFILTER --> FLIGHTPLP
+    PLPFILTER --> INTLPLP
+    PLPFILTER --> HOTELPLP
+    PLPFILTER --> TOURPLP
+
+    CALENDAR --> BUSPLP
+    CALENDAR --> TRAINPLP
+    CALENDAR --> FLIGHTPLP
+    CALENDAR --> INTLPLP
+    CALENDAR --> HOTELPLP
+
+    LOGO --> BUSPLP
+    LOGO --> TRAINPLP
+    LOGO --> FLIGHTPLP
+    LOGO --> INTLPLP
+
+    HOTELPLPUI --> HOTELPLP
+    HOTELPLPUI --> TOURPLP
+    BUNDLE --> HOTELPLP
+    BUNDLE --> TOURPLP
+    SUGGESTION -. Figma/task evidence .-> HOTELPLP
+    SUGGESTION -. Figma/task evidence .-> FLIGHTPLP
+    SUGGESTION -. Figma/task evidence .-> INTLPLP
+
+    %% Shared PDP consumers. No service-to-service blocking.
+    GALLERY --> HOTELPDP
+    GALLERY --> TOURPDP
+
+    TRANSPORT --> BUSPDP
+    TRANSPORT --> TRAINPDP
+    TRANSPORT --> FLIGHTPDP
+    TRANSPORT --> INTLPDP
+
+    HERO --> TOURPDP
+    SHOWMORE --> HOTELPDP
+
+    %% Passenger and review components block Review only.
+    REVIEWFOUNDATION --> BUSREVIEW
+    REVIEWFOUNDATION --> TRAINREVIEW
+    REVIEWFOUNDATION --> FLIGHTREVIEW
+    REVIEWFOUNDATION --> INTLREVIEW
+    REVIEWFOUNDATION --> HOTELREVIEW
+    REVIEWFOUNDATION --> TOURREVIEW
+
+    PASSENGER --> BUSREVIEW
+    PASSENGER --> TRAINREVIEW
+    PASSENGER --> FLIGHTREVIEW
+    PASSENGER --> INTLREVIEW
+    PASSENGER --> HOTELREVIEW
+    PASSENGER --> TOURREVIEW
+
+    BUSDONE --> ALLDONE
+    TRAINDONE --> ALLDONE
+    FLIGHTDONE --> ALLDONE
+    INTLDONE --> ALLDONE
+    HOTELDONE --> ALLDONE
+    TOURDONE --> ALLDONE
+
+    classDef infra fill:#202a35,stroke:#94a3b8,color:#f8fafc,stroke-width:3px
+    classDef sharedPlp fill:#2e2050,stroke:#8b5cf6,color:#f8fafc,stroke-width:2px
+    classDef sharedPdp fill:#33245a,stroke:#a78bfa,color:#f8fafc,stroke-width:2px
+    classDef passenger fill:#3b2054,stroke:#c084fc,color:#f8fafc,stroke-width:2px
+    classDef bus fill:#15351f,stroke:#22c55e,color:#f8fafc,stroke-width:2px
+    classDef train fill:#273b15,stroke:#84cc16,color:#f8fafc,stroke-width:2px
+    classDef flight fill:#123448,stroke:#0ea5e9,color:#f8fafc,stroke-width:2px
+    classDef intl fill:#123042,stroke:#22d3ee,color:#f8fafc,stroke-width:2px
+    classDef hotel fill:#432512,stroke:#f97316,color:#f8fafc,stroke-width:2px
+    classDef tour fill:#41143f,stroke:#d946ef,color:#f8fafc,stroke-width:2px
+    classDef milestone fill:#111827,stroke:#f8fafc,color:#f8fafc,stroke-width:2px
+
+    class INFRA infra
+    class PLPCARD,PLPFILTER,CALENDAR,LOGO,HOTELPLPUI,BUNDLE,SUGGESTION sharedPlp
+    class GALLERY,TRANSPORT,HERO,SHOWMORE,REVIEWFOUNDATION sharedPdp
+    class PASSENGER passenger
+    class BUSPLP,BUSPDP,BUSREVIEW,BUSTRIPS bus
+    class TRAINPLP,TRAINPDP,TRAINREVIEW,TRAINTRIPS train
+    class FLIGHTPLP,FLIGHTPDP,FLIGHTREVIEW,FLIGHTTRIPS flight
+    class INTLPLP,INTLPDP,INTLREVIEW,INTLTRIPS intl
+    class HOTELPLP,HOTELPDP,HOTELREVIEW,HOTELTRIPS hotel
+    class TOURPLP,TOURPDP,TOURREVIEW,TOURTRIPS tour
+    class BUSDONE,TRAINDONE,FLIGHTDONE,INTLDONE,HOTELDONE,TOURDONE,ALLDONE milestone

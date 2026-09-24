@@ -1,0 +1,25 @@
+{
+  "name": "mermaid-studio",
+  "version": "1.0.0",
+  "description": "A free, responsive, browser-based Mermaid diagram editor with CAD-like canvas controls, starter templates, and export tools.",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "test": "node test-diagrams.mjs"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/muhamadzolfaghari/mermaid-studio.git"
+  },
+  "author": "Mohammad Zolfaghari",
+  "license": "MIT",
+  "dependencies": {
+    "mermaid": "^11.4.1"
+  },
+  "devDependencies": {
+    "jsdom": "^27.0.1",
+    "vite": "^6.0.0"
+  }
+}

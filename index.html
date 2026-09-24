@@ -1,0 +1,297 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Mermaid Studio — Free Browser-Based Mermaid Diagram Editor</title>
+  <meta name="description" content="A free, responsive, browser-based Mermaid diagram editor with CAD-like canvas controls, kinetic panning, starter templates, and SVG/PNG export." />
+  <meta name="theme-color" content="#070b14" />
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  
+  <!-- Preconnect and Modern Typography -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+
+  <link rel="stylesheet" href="./src/styles/main.css" />
+  <link rel="stylesheet" href="./src/styles/editor.css" />
+  <link rel="stylesheet" href="./src/styles/canvas.css" />
+  <link rel="stylesheet" href="./src/styles/modal.css" />
+</head>
+<body>
+  <div id="app">
+    <!-- Top Header -->
+    <header class="app-header">
+      <div class="brand-section">
+        <div class="brand-logo" aria-hidden="true">
+          <svg width="20" height="20" viewBox="0 0 32 32" fill="none">
+            <circle cx="9" cy="9" r="3.5" fill="#5794ff"/>
+            <circle cx="23" cy="9" r="3.5" fill="#a78bfa"/>
+            <circle cx="16" cy="23" r="3.5" fill="#34d399"/>
+            <path d="M11.5 10.5 L14 20.5" stroke="#5794ff" stroke-width="2" stroke-linecap="round"/>
+            <path d="M20.5 10.5 L18 20.5" stroke="#a78bfa" stroke-width="2" stroke-linecap="round"/>
+            <path d="M12.5 9 H19.5" stroke="#4b6287" stroke-width="2" stroke-linecap="round"/>
+          </svg>
+        </div>
+        <div class="brand-info">
+          <div class="brand-title-row">
+            <h1 class="brand-title">Mermaid Studio</h1>
+            <span class="brand-badge">Free / Static</span>
+          </div>
+          <span class="brand-subtitle">Visual diagram editor with CAD canvas controls</span>
+        </div>
+      </div>
+
+      <!-- Center Template Selector -->
+      <div class="header-center">
+        <div class="template-selector-wrap">
+          <select id="templateSelect" class="template-select" aria-label="Select diagram starter template"></select>
+          <span class="template-selector-icon" aria-hidden="true">▼</span>
+        </div>
+      </div>
+
+      <!-- Action Buttons -->
+      <div class="header-actions">
+        <button id="savedDiagramsBtn" class="btn" type="button" title="View and load saved diagrams">
+          <span>📁 Saved</span>
+        </button>
+        <button id="importBtn" class="btn" type="button" title="Open or import a .mmd file (Ctrl+O)">
+          <span>📥 Import</span>
+        </button>
+        <input type="file" id="fileInput" accept=".mmd,.txt,.mermaid" style="display: none;" />
+
+        <button id="exportMenuBtn" class="btn btn-primary" type="button" title="Download or copy diagram">
+          <span>⚡ Export ▼</span>
+        </button>
+        <div id="exportDropdown" class="modal-card" style="display: none; position: absolute; top: 52px; right: 16px; width: 220px; z-index: 50; padding: 6px; box-shadow: 0 10px 30px rgba(0,0,0,0.6);">
+          <button id="exportSvgBtn" class="editor-tool-btn" style="width: 100%; justify-content: flex-start; padding: 8px 10px; margin-bottom: 4px;">
+            🖼️ Download SVG
+          </button>
+          <button id="exportPngBtn" class="editor-tool-btn" style="width: 100%; justify-content: flex-start; padding: 8px 10px; margin-bottom: 4px;">
+            📷 Download PNG (2x Retina)
+          </button>
+          <button id="downloadMmdBtn" class="editor-tool-btn" style="width: 100%; justify-content: flex-start; padding: 8px 10px; margin-bottom: 4px;">
+            📄 Download .mmd Source
+          </button>
+          <hr style="border: none; border-top: 1px solid var(--line); margin: 4px 0;" />
+          <button id="copySvgBtn" class="editor-tool-btn" style="width: 100%; justify-content: flex-start; padding: 8px 10px; margin-bottom: 4px;">
+            📋 Copy SVG Code
+          </button>
+          <button id="copyMdBtn" class="editor-tool-btn" style="width: 100%; justify-content: flex-start; padding: 8px 10px;">
+            📝 Copy Markdown Fence
+          </button>
+        </div>
+
+        <button id="shortcutsBtn" class="btn btn-icon-only" type="button" title="Keyboard shortcuts (?)">
+          <span>⌨️</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- Workspace -->
+    <main class="workspace">
+      <!-- Left Pane: Code Editor -->
+      <section class="editor-pane" id="editorPane">
+        <div class="editor-toolbar">
+          <div class="editor-toolbar-left">
+            <button id="restoreTemplateBtn" class="editor-tool-btn" type="button" title="Reset editor to current template">
+              ↺ Restore Template
+            </button>
+            <button id="clearEditorBtn" class="editor-tool-btn" type="button" title="Clear editor content">
+              ✕ Clear
+            </button>
+          </div>
+          <div class="editor-toolbar-right">
+            <button id="saveDraftBtn" class="editor-tool-btn" type="button" title="Save diagram to browser library (Ctrl+S)">
+              💾 Save
+            </button>
+          </div>
+        </div>
+
+        <div class="editor-body">
+          <div class="line-numbers" id="lineNumbers" aria-hidden="true">1</div>
+          <textarea id="codeEditor" class="code-editor" spellcheck="false" placeholder="Write or paste your Mermaid syntax here..." aria-label="Mermaid diagram source code"></textarea>
+        </div>
+
+        <div class="editor-status">
+          <div class="status-indicator">
+            <span class="status-dot" id="statusDot"></span>
+            <span class="status-text" id="statusText">Ready</span>
+          </div>
+          <div class="status-stats" id="editorStats">Lines: 1 | Chars: 0</div>
+        </div>
+      </section>
+
+      <!-- Draggable Splitter -->
+      <div class="splitter" id="splitter" title="Drag to resize panels"></div>
+
+      <!-- Right Pane: Interactive Canvas -->
+      <section class="canvas-pane" id="canvasPane">
+        <!-- Floating HUD Controls -->
+        <div class="canvas-hud-top">
+          <!-- Canvas Navigation Controls -->
+          <div class="hud-group" role="toolbar" aria-label="Canvas zoom and pan controls">
+            <button id="zoomOut" class="hud-btn hud-btn-icon" type="button" title="Zoom out (−)" aria-label="Zoom out">−</button>
+            <span id="zoomLabel" class="zoom-label" title="Current zoom level">100%</span>
+            <button id="zoomIn" class="hud-btn hud-btn-icon" type="button" title="Zoom in (+)" aria-label="Zoom in">+</button>
+            <button id="fitBtn" class="hud-btn" type="button" title="Fit diagram to viewport (F)">Fit</button>
+            <button id="recenterBtn" class="hud-btn" type="button" title="Center diagram in viewport (C)">Center</button>
+            <button id="resetBtn" class="hud-btn" type="button" title="Reset zoom to 100% (0)">100%</button>
+            <button id="wheelToggleBtn" class="hud-btn" type="button" title="Toggle mouse wheel: Zoom vs Pan (Hold Ctrl/Cmd to zoom anytime)">Wheel: Zoom</button>
+          </div>
+
+          <!-- Visual Theme & Fullscreen -->
+          <div class="hud-group" role="toolbar" aria-label="Theme and view controls">
+            <select id="themeSelect" class="hud-select" title="Diagram visual theme" aria-label="Select theme">
+              <option value="dark">Theme: Dark</option>
+              <option value="default">Theme: Default</option>
+              <option value="forest">Theme: Forest</option>
+              <option value="neutral">Theme: Neutral</option>
+              <option value="base">Theme: Base</option>
+            </select>
+            <select id="gridSelect" class="hud-select" title="Canvas background grid style" aria-label="Select grid style">
+              <option value="dots">Grid: Dots</option>
+              <option value="lines">Grid: Lines</option>
+              <option value="none">Grid: Blank</option>
+            </select>
+            <button id="fullscreenBtn" class="hud-btn" type="button" title="Toggle full screen (Shift+F / F11)">
+              Full screen
+            </button>
+          </div>
+        </div>
+
+        <!-- Notification Banner / Syntax Error Alert -->
+        <div id="canvasAlert" class="canvas-alert error" role="alert">
+          <span id="alertMessage" class="alert-message">Mermaid syntax error</span>
+          <button id="alertCloseBtn" class="alert-close" type="button" aria-label="Dismiss error">✕</button>
+        </div>
+
+        <!-- Interactive Stage Viewport -->
+        <div class="stage" id="stage" tabindex="0" role="region" aria-label="Interactive diagram canvas">
+          <div class="canvas" id="canvas">
+            <div id="diagram-container"></div>
+          </div>
+        </div>
+
+        <!-- Floating Bottom Shortcut Hint Bar -->
+        <div class="canvas-shortcuts-hint" aria-hidden="true">
+          <span>Drag: pan</span>
+          <span>Wheel: zoom</span>
+          <span><kbd>F</kbd> fit</span>
+          <span><kbd>C</kbd> center</span>
+          <span><kbd>0</kbd> 100%</span>
+          <span><kbd>Shift+F</kbd> full screen</span>
+        </div>
+      </section>
+    </main>
+
+    <!-- Mobile Tabs (Visible only on small viewports) -->
+    <nav class="mobile-tabs" id="mobileTabs" aria-label="Mobile view tabs">
+      <button class="mobile-tab-btn active" data-tab="editor" type="button">
+        <span>✏️ Code Editor</span>
+      </button>
+      <button class="mobile-tab-btn" data-tab="canvas" type="button">
+        <span>🎨 Diagram Canvas</span>
+      </button>
+    </nav>
+
+    <!-- Modals -->
+
+    <!-- Saved Diagrams Modal -->
+    <div id="savedModal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="savedModalTitle">
+      <div class="modal-card">
+        <div class="modal-header">
+          <h2 id="savedModalTitle" class="modal-title">Saved Diagrams Library</h2>
+          <button class="modal-close-btn" data-close="savedModal" type="button" aria-label="Close modal">✕</button>
+        </div>
+        <div class="modal-body">
+          <div class="form-group">
+            <label class="form-label" for="newDiagramTitle">Save Current Diagram</label>
+            <div style="display: flex; gap: 8px;">
+              <input type="text" id="newDiagramTitle" class="form-input" placeholder="e.g. Checkout Service Architecture" style="flex: 1;" />
+              <button id="modalSaveBtn" class="btn btn-primary" type="button">Save to Browser</button>
+            </div>
+          </div>
+          <hr style="border: none; border-top: 1px solid var(--line); margin: 16px 0;" />
+          <h3 class="form-label">Your Saved Diagrams</h3>
+          <div id="savedListContainer" class="diagram-list" style="margin-top: 8px;"></div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn" data-close="savedModal" type="button">Close</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Shortcuts Modal -->
+    <div id="shortcutsModal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="shortcutsModalTitle">
+      <div class="modal-card">
+        <div class="modal-header">
+          <h2 id="shortcutsModalTitle" class="modal-title">Keyboard Shortcuts</h2>
+          <button class="modal-close-btn" data-close="shortcutsModal" type="button" aria-label="Close modal">✕</button>
+        </div>
+        <div class="modal-body">
+          <div class="shortcuts-grid">
+            <span class="shortcut-desc">Fit diagram to view</span>
+            <div class="shortcut-keys"><kbd>F</kbd></div>
+
+            <span class="shortcut-desc">Recenter diagram</span>
+            <div class="shortcut-keys"><kbd>C</kbd></div>
+
+            <span class="shortcut-desc">Reset zoom to 100%</span>
+            <div class="shortcut-keys"><kbd>0</kbd></div>
+
+            <span class="shortcut-desc">Zoom in / Zoom out</span>
+            <div class="shortcut-keys"><kbd>+</kbd> / <kbd>−</kbd></div>
+
+            <span class="shortcut-desc">Pan canvas</span>
+            <div class="shortcut-keys"><kbd>Arrow Keys</kbd> or <kbd>Drag</kbd></div>
+
+            <span class="shortcut-desc">Fast pan canvas</span>
+            <div class="shortcut-keys"><kbd>Shift</kbd> + <kbd>Arrows</kbd></div>
+
+            <span class="shortcut-desc">Toggle full screen</span>
+            <div class="shortcut-keys"><kbd>Shift</kbd> + <kbd>F</kbd> or <kbd>F11</kbd></div>
+
+            <span class="shortcut-desc">Save diagram to browser</span>
+            <div class="shortcut-keys"><kbd>Ctrl</kbd> / <kbd>Cmd</kbd> + <kbd>S</kbd></div>
+
+            <span class="shortcut-desc">Open / Import .mmd file</span>
+            <div class="shortcut-keys"><kbd>Ctrl</kbd> / <kbd>Cmd</kbd> + <kbd>O</kbd></div>
+
+            <span class="shortcut-desc">Indent / Dedent in editor</span>
+            <div class="shortcut-keys"><kbd>Tab</kbd> / <kbd>Shift</kbd> + <kbd>Tab</kbd></div>
+
+            <span class="shortcut-desc">Zoom on wheel anytime</span>
+            <div class="shortcut-keys"><kbd>Ctrl</kbd> / <kbd>Cmd</kbd> + <kbd>Scroll</kbd></div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-primary" data-close="shortcutsModal" type="button">Got it</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Confirm Restore Modal -->
+    <div id="restoreModal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="restoreModalTitle">
+      <div class="modal-card" style="max-width: 420px;">
+        <div class="modal-header">
+          <h2 id="restoreModalTitle" class="modal-title">Restore Template?</h2>
+          <button class="modal-close-btn" data-close="restoreModal" type="button" aria-label="Close modal">✕</button>
+        </div>
+        <div class="modal-body">
+          <p style="color: var(--text-muted); font-size: 13px; line-height: 1.5;">
+            Restoring the template will replace your current edits in the editor with the original starter code. Are you sure?
+          </p>
+        </div>
+        <div class="modal-footer">
+          <button class="btn" data-close="restoreModal" type="button">Cancel</button>
+          <button id="confirmRestoreBtn" class="btn btn-primary" type="button">Yes, Restore Template</button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <script type="module" src="./src/main.js"></script>
+</body>
+</html>
