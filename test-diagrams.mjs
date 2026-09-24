@@ -83,25 +83,29 @@ try {
 
 // Test Group 4: Inspect production bundle dist/
 console.log('\n--- Test Group 4: Production Dist Inspection ---');
-const distHtml = fs.readFileSync('./dist/index.html', 'utf8');
-const checks = [
-  { name: 'Base path in JS script', check: distHtml.includes('/mermaid-studio/assets/index-') },
-  { name: 'Base path in CSS link', check: distHtml.includes('/mermaid-studio/assets/index-') },
-  { name: 'Base path in favicon', check: distHtml.includes('/mermaid-studio/favicon.svg') },
-  { name: 'Stage canvas element present', check: distHtml.includes('id="stage"') },
-  { name: 'Diagram container present', check: distHtml.includes('id="diagram-container"') },
-  { name: 'Code editor present', check: distHtml.includes('id="codeEditor"') },
-  { name: 'SEO title present', check: distHtml.includes('<title>Mermaid Studio') },
-  { name: 'SEO meta description present', check: distHtml.includes('name="description"') },
-];
+if (!fs.existsSync('./dist/index.html')) {
+  console.log('⚠️ ./dist/index.html does not exist yet. Please run `npm run build` before testing dist output.');
+} else {
+  const distHtml = fs.readFileSync('./dist/index.html', 'utf8');
+  const checks = [
+    { name: 'Base path in JS script', check: distHtml.includes('/mermaid-studio/assets/index-') },
+    { name: 'Base path in CSS link', check: distHtml.includes('/mermaid-studio/assets/index-') },
+    { name: 'Base path in favicon', check: distHtml.includes('/mermaid-studio/favicon.svg') },
+    { name: 'Stage canvas element present', check: distHtml.includes('id="stage"') },
+    { name: 'Diagram container present', check: distHtml.includes('id="diagram-container"') },
+    { name: 'Code editor present', check: distHtml.includes('id="codeEditor"') },
+    { name: 'SEO title present', check: distHtml.includes('<title>Mermaid Studio') },
+    { name: 'SEO meta description present', check: distHtml.includes('name="description"') },
+  ];
 
-for (const c of checks) {
-  if (c.check) {
-    console.log(`✅ [Dist Check] ${c.name}`);
-    passed++;
-  } else {
-    console.error(`❌ [Dist Check] FAILED: ${c.name}`);
-    failed++;
+  for (const c of checks) {
+    if (c.check) {
+      console.log(`✅ [Dist Check] ${c.name}`);
+      passed++;
+    } else {
+      console.error(`❌ [Dist Check] FAILED: ${c.name}`);
+      failed++;
+    }
   }
 }
 
