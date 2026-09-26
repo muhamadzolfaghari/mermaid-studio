@@ -1,7 +1,11 @@
 /**
  * Mermaid AI Assistant
- * Natural language diagram generator & assistant inspired by mermaid.ai / Mermaid Chart.
+ * Supports dual-engine diagram generation:
+ * 1. Fast instant heuristic generator (0 MB, runs anywhere immediately)
+ * 2. REAL in-browser Qwen2.5-Coder (0.5B) LLM via WebAssembly / WebGPU (@mlc-ai/web-llm)
  */
+
+export const QWEN_MODEL_ID = 'Qwen2.5-Coder-0.5B-Instruct-q4f16_1-MLC';
 
 export const AI_SUGGESTIONS = [
   {
@@ -46,9 +50,17 @@ export class AIAssistant {
     this.container = options.container;
     this.onApplyCode = options.onApplyCode || (() => {});
     this.onInsertCode = options.onInsertCode || (() => {});
+
+    this.engineMode = 'heuristic'; // 'heuristic' | 'qwen'
+    this.qwenEngine = null;
+    this.qwenLoading = false;
+    this.qwenLoaded = false;
+    this.qwenError = null;
+
     this.promptInput = null;
     this.generateBtn = null;
     this.resultContainer = null;
+    this.resultCode = null;
     this.generatedCode = '';
 
     this.init();
@@ -57,6 +69,11 @@ export class AIAssistant {
   init() {
     this.render();
     this.bindEvents();
+    this.checkWebGPUSupport();
+  }
+
+  checkWebGPUSupport() {
+    this.hasWebGPU = typeof navigator !== 'undefined' && 'gpu' in navigator;
   }
 
   render() {
@@ -64,7 +81,7 @@ export class AIAssistant {
       <div class="ai-drawer-header">
         <div class="ai-drawer-title-row">
           <div class="ai-sparkle-badge">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M12 2L14.4 9.6L22 12L14.4 14.4L12 22L9.6 14.4L2 12L9.6 9.6L12 2Z" fill="url(#aiGradient)" stroke="none" />
               <defs>
                 <linearGradient id="aiGradient" x1="2" y1="2" x2="22" y2="22">
@@ -76,24 +93,69 @@ export class AIAssistant {
           </div>
           <div>
             <h2 class="ai-title">Mermaid AI Studio</h2>
-            <p class="ai-subtitle">Generate diagrams with natural language prompts</p>
+            <p class="ai-subtitle">Generate diagrams with natural language or local Qwen</p>
           </div>
         </div>
         <button id="closeAiDrawerBtn" class="drawer-close-btn" type="button" aria-label="Close AI Assistant">✕</button>
       </div>
 
       <div class="ai-drawer-body">
+        <!-- Dual Engine Selector -->
+        <div class="ai-engine-switcher" role="radiogroup" aria-label="AI Engine Mode">
+          <button id="engineTabHeuristic" class="ai-engine-tab active" type="button" role="radio" aria-checked="true">
+            <span>⚡ Instant (0 MB)</span>
+          </button>
+          <button id="engineTabQwen" class="ai-engine-tab" type="button" role="radio" aria-checked="false">
+            <span>🧠 Qwen2.5 (Local LLM)</span>
+          </button>
+        </div>
+
+        <!-- Qwen Local LLM Status Card (Shown when Qwen tab active) -->
+        <div id="qwenStatusCard" class="qwen-status-card" style="display: none;">
+          <div class="qwen-status-header">
+            <span class="qwen-model-pill">Qwen2.5-Coder 0.5B</span>
+            <span id="qwenStatusBadge" class="qwen-status-text">WebGPU / Wasm</span>
+          </div>
+
+          <div id="qwenDownloadSection">
+            <p style="font-size: 11px; color: var(--text-muted); line-height: 1.4; margin-bottom: 8px;">
+              Runs 100% locally in your browser with WebAssembly & WebGPU. Downloads ~380 MB once and caches permanently in browser storage.
+            </p>
+            <div id="qwenProgressWrap" class="qwen-progress-wrap" style="display: none;">
+              <div class="qwen-progress-track">
+                <div id="qwenProgressBar" class="qwen-progress-bar"></div>
+              </div>
+              <div class="qwen-progress-label">
+                <span id="qwenProgressText">Initializing engine…</span>
+                <span id="qwenProgressPct">0%</span>
+              </div>
+            </div>
+            <button id="loadQwenBtn" class="btn btn-sm btn-primary" style="width: 100%; margin-top: 6px;" type="button">
+              ⬇ Load Qwen Model (~380 MB)
+            </button>
+          </div>
+
+          <div id="qwenReadySection" style="display: none;">
+            <div class="qwen-badge-ready">
+              <span>●</span>
+              <span>Model Loaded & Ready in Memory</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Prompt Input Card -->
         <div class="ai-input-card">
           <label class="ai-label" for="aiPromptText">What diagram would you like to build?</label>
           <textarea id="aiPromptText" class="ai-prompt-input" rows="3" placeholder="e.g. Design a microservices payment architecture with Stripe, Kafka, and PostgreSQL..."></textarea>
           <div class="ai-actions-row">
             <button id="aiGenerateBtn" class="btn btn-ai-primary" type="button">
               <span class="ai-btn-icon">✨</span>
-              <span>Generate with AI</span>
+              <span id="aiGenerateBtnLabel">Generate Diagram</span>
             </button>
           </div>
         </div>
 
+        <!-- Suggestions Section -->
         <div class="ai-suggestions-section">
           <div class="ai-suggestions-header">Quick Prompt Ideas</div>
           <div class="ai-pills-list" id="aiPillsList">
@@ -106,9 +168,10 @@ export class AIAssistant {
           </div>
         </div>
 
+        <!-- Result Card -->
         <div id="aiResultCard" class="ai-result-card" style="display: none;">
           <div class="ai-result-header">
-            <span class="ai-result-tag">Generated Diagram</span>
+            <span class="ai-result-tag" id="aiResultEngineTag">Generated with Instant Engine</span>
             <div class="ai-result-actions">
               <button id="aiCopyBtn" class="editor-tool-btn" type="button" title="Copy code">📋 Copy</button>
               <button id="aiApplyBtn" class="btn btn-primary btn-sm" type="button">Apply to Canvas</button>
@@ -121,11 +184,39 @@ export class AIAssistant {
 
     this.promptInput = this.container.querySelector('#aiPromptText');
     this.generateBtn = this.container.querySelector('#aiGenerateBtn');
+    this.generateBtnLabel = this.container.querySelector('#aiGenerateBtnLabel');
     this.resultContainer = this.container.querySelector('#aiResultCard');
     this.resultCode = this.container.querySelector('#aiResultCode');
+    this.resultEngineTag = this.container.querySelector('#aiResultEngineTag');
+
+    this.engineTabHeuristic = this.container.querySelector('#engineTabHeuristic');
+    this.engineTabQwen = this.container.querySelector('#engineTabQwen');
+    this.qwenStatusCard = this.container.querySelector('#qwenStatusCard');
+    this.loadQwenBtn = this.container.querySelector('#loadQwenBtn');
+    this.qwenProgressWrap = this.container.querySelector('#qwenProgressWrap');
+    this.qwenProgressBar = this.container.querySelector('#qwenProgressBar');
+    this.qwenProgressText = this.container.querySelector('#qwenProgressText');
+    this.qwenProgressPct = this.container.querySelector('#qwenProgressPct');
+    this.qwenDownloadSection = this.container.querySelector('#qwenDownloadSection');
+    this.qwenReadySection = this.container.querySelector('#qwenReadySection');
+    this.qwenStatusBadge = this.container.querySelector('#qwenStatusBadge');
   }
 
   bindEvents() {
+    // Engine Tab Switching
+    this.engineTabHeuristic.addEventListener('click', () => {
+      this.setEngineMode('heuristic');
+    });
+
+    this.engineTabQwen.addEventListener('click', () => {
+      this.setEngineMode('qwen');
+    });
+
+    // Load Qwen Button
+    this.loadQwenBtn.addEventListener('click', () => {
+      this.initQwenEngine();
+    });
+
     // Generate click
     this.generateBtn.addEventListener('click', () => this.handleGenerate());
 
@@ -169,6 +260,67 @@ export class AIAssistant {
     });
   }
 
+  setEngineMode(mode) {
+    this.engineMode = mode;
+    if (mode === 'heuristic') {
+      this.engineTabHeuristic.classList.add('active');
+      this.engineTabHeuristic.setAttribute('aria-checked', 'true');
+      this.engineTabQwen.classList.remove('active', 'qwen-active');
+      this.engineTabQwen.setAttribute('aria-checked', 'false');
+      this.qwenStatusCard.style.display = 'none';
+      this.generateBtnLabel.textContent = 'Generate (Instant)';
+    } else {
+      this.engineTabQwen.classList.add('active', 'qwen-active');
+      this.engineTabQwen.setAttribute('aria-checked', 'true');
+      this.engineTabHeuristic.classList.remove('active');
+      this.engineTabHeuristic.setAttribute('aria-checked', 'false');
+      this.qwenStatusCard.style.display = 'flex';
+      this.generateBtnLabel.textContent = this.qwenLoaded ? 'Generate with Qwen' : 'Load Qwen & Generate';
+
+      if (!this.hasWebGPU) {
+        this.qwenStatusBadge.textContent = '⚠️ WebGPU not detected';
+        this.qwenStatusBadge.style.color = 'var(--warning)';
+      }
+    }
+  }
+
+  async initQwenEngine() {
+    if (this.qwenLoaded || this.qwenLoading) return;
+
+    this.qwenLoading = true;
+    this.loadQwenBtn.disabled = true;
+    this.qwenProgressWrap.style.display = 'flex';
+    this.qwenProgressBar.style.width = '0%';
+    this.qwenProgressPct.textContent = '0%';
+    this.qwenProgressText.textContent = 'Connecting to Hugging Face CDN…';
+
+    try {
+      // Dynamic import so base bundle stays lightweight
+      const { CreateMLCEngine } = await import('@mlc-ai/web-llm');
+
+      this.qwenEngine = await CreateMLCEngine(QWEN_MODEL_ID, {
+        initProgressCallback: (report) => {
+          const pct = Math.round((report.progress || 0) * 100);
+          this.qwenProgressBar.style.width = `${pct}%`;
+          this.qwenProgressPct.textContent = `${pct}%`;
+          this.qwenProgressText.textContent = report.text || 'Loading weights into WebAssembly memory…';
+        },
+      });
+
+      this.qwenLoaded = true;
+      this.qwenLoading = false;
+      this.qwenDownloadSection.style.display = 'none';
+      this.qwenReadySection.style.display = 'block';
+      this.generateBtnLabel.textContent = 'Generate with Qwen';
+    } catch (err) {
+      console.error('Qwen initialization failed:', err);
+      this.qwenLoading = false;
+      this.loadQwenBtn.disabled = false;
+      this.qwenProgressText.textContent = `Error: ${err.message || 'Failed to initialize WebLLM'}`;
+      this.qwenProgressText.style.color = 'var(--danger)';
+    }
+  }
+
   async handleGenerate() {
     const prompt = this.promptInput.value.trim();
     if (!prompt) {
@@ -176,18 +328,102 @@ export class AIAssistant {
       return;
     }
 
-    // Loading state
+    if (this.engineMode === 'qwen') {
+      await this.handleGenerateQwen(prompt);
+    } else {
+      await this.handleGenerateHeuristic(prompt);
+    }
+  }
+
+  async handleGenerateQwen(prompt) {
+    if (!this.qwenLoaded) {
+      await this.initQwenEngine();
+      if (!this.qwenLoaded) {
+        // Fallback to heuristic if user cancel/error
+        console.warn('Falling back to instant generator due to Qwen load issue.');
+        await this.handleGenerateHeuristic(prompt);
+        return;
+      }
+    }
+
+    // Set loading state
     this.generateBtn.disabled = true;
     this.generateBtn.innerHTML = `
       <span class="ai-spinner"></span>
-      <span>Generating...</span>
+      <span>Qwen Thinking…</span>
     `;
 
-    await new Promise((r) => setTimeout(r, 450));
+    this.resultContainer.style.display = 'block';
+    this.resultEngineTag.textContent = 'Generated with Qwen2.5-Coder (Local Wasm/WebGPU)';
+    this.resultCode.textContent = 'Generating tokens…';
+    this.resultContainer.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+
+    try {
+      let rawText = '';
+      const completion = await this.qwenEngine.chat.completions.create({
+        messages: [
+          {
+            role: 'system',
+            content: 'You are an expert Mermaid diagram generator. Generate ONLY valid, clean Mermaid syntax. Output the diagram code inside a single ```mermaid ... ``` code block. Do NOT include any explanations, greetings, or commentary outside the code block.',
+          },
+          {
+            role: 'user',
+            content: `Generate a Mermaid diagram for: ${prompt}`,
+          },
+        ],
+        stream: true,
+        temperature: 0.15,
+        max_tokens: 1024,
+      });
+
+      for await (const chunk of completion) {
+        const delta = chunk.choices[0]?.delta?.content || '';
+        rawText += delta;
+        // Clean display in real time
+        this.resultCode.textContent = this.extractMermaidCode(rawText) || rawText;
+      }
+
+      this.generatedCode = this.extractMermaidCode(rawText);
+      this.resultCode.textContent = this.generatedCode;
+    } catch (err) {
+      console.error('Qwen generation error:', err);
+      // Fallback
+      const fallback = this.synthesizeDiagramFromPrompt(prompt);
+      this.generatedCode = fallback;
+      this.resultCode.textContent = fallback;
+      this.resultEngineTag.textContent = 'Instant Generator Fallback';
+    } finally {
+      this.generateBtn.disabled = false;
+      this.generateBtn.innerHTML = `
+        <span class="ai-btn-icon">✨</span>
+        <span>Generate with Qwen</span>
+      `;
+    }
+  }
+
+  extractMermaidCode(text) {
+    if (!text) return '';
+    const match = text.match(/```(?:mermaid)?\s*([\s\S]*?)```/i);
+    if (match && match[1]) {
+      return match[1].trim();
+    }
+    // If not enclosed in backticks yet, trim conversational parts
+    return text.replace(/```mermaid|```/g, '').trim();
+  }
+
+  async handleGenerateHeuristic(prompt) {
+    this.generateBtn.disabled = true;
+    this.generateBtn.innerHTML = `
+      <span class="ai-spinner"></span>
+      <span>Generating…</span>
+    `;
+
+    await new Promise((r) => setTimeout(r, 200));
 
     try {
       const code = this.synthesizeDiagramFromPrompt(prompt);
       this.generatedCode = code;
+      this.resultEngineTag.textContent = 'Generated with Instant Heuristic Engine';
       this.resultCode.textContent = code;
       this.resultContainer.style.display = 'block';
       this.resultContainer.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
@@ -195,7 +431,7 @@ export class AIAssistant {
       this.generateBtn.disabled = false;
       this.generateBtn.innerHTML = `
         <span class="ai-btn-icon">✨</span>
-        <span>Generate with AI</span>
+        <span>Generate (Instant)</span>
       `;
     }
   }
@@ -335,7 +571,7 @@ export class AIAssistant {
     merge release/v1.0 id: "Sync release back to develop"`;
     }
 
-    // 5. Cloud / Microservices / Architecture Flowchart (Default & Highly Versatile)
+    // 5. Cloud / Microservices / Architecture Flowchart
     if (p.includes('aws') || p.includes('cloud') || p.includes('microservice') || p.includes('kubernetes') || p.includes('docker') || p.includes('kafka') || p.includes('serverless')) {
       return `flowchart TD
     subgraph Clients["Edge & Clients"]

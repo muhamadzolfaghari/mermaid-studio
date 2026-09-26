@@ -16,6 +16,7 @@
   "author": "Mohammad Zolfaghari",
   "license": "MIT",
   "dependencies": {
+    "@mlc-ai/web-llm": "^0.2.85",
     "mermaid": "^11.4.1"
   },
   "devDependencies": {
