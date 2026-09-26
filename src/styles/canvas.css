@@ -45,6 +45,82 @@
   cursor: default !important;
 }
 
+.stage.select-mode .node,
+.stage.select-mode [class*="node"],
+.stage.select-mode .actor {
+  cursor: pointer !important;
+  transition: filter 0.15s ease;
+}
+
+.stage.select-mode .node:hover,
+.stage.select-mode [class*="node"]:hover,
+.stage.select-mode .actor:hover {
+  filter: drop-shadow(0 0 10px rgba(99, 102, 241, 0.95)) !important;
+}
+
+.node.selected-node,
+[class*="node"].selected-node,
+.actor.selected-node {
+  filter: drop-shadow(0 0 14px rgba(6, 182, 212, 1)) !important;
+}
+
+/* Floating Node Inspector HUD */
+.node-inspector-hud {
+  position: absolute;
+  top: 18px;
+  left: 50%;
+  transform: translateX(-50%) translateY(0);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 14px;
+  background: rgba(14, 22, 38, 0.92);
+  border: 1px solid rgba(99, 102, 241, 0.6);
+  border-radius: 999px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5), 0 0 12px var(--primary-glow);
+  backdrop-filter: blur(14px);
+  z-index: 18;
+  font-size: 12px;
+  font-weight: 500;
+  color: #fff;
+  pointer-events: auto;
+  animation: fadeInDown 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes fadeInDown {
+  from { opacity: 0; transform: translateX(-50%) translateY(-10px); }
+  to { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+
+.node-hud-title {
+  color: var(--text-muted);
+  font-size: 11px;
+}
+
+.node-hud-val {
+  font-weight: 700;
+  color: var(--accent-cyan);
+}
+
+.node-hud-action {
+  padding: 3px 8px;
+  border-radius: 6px;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  color: #cbd5e1;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.node-hud-action:hover {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: #fff;
+}
+
+
 /* Transform Canvas */
 .canvas {
   position: absolute;

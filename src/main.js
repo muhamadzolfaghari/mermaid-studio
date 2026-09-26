@@ -24,6 +24,7 @@ const editorStatsEl = $('editorStats');
 const diagramTypeBadgeEl = $('diagramTypeBadge');
 
 const diagramTitleInput = $('diagramTitleInput');
+const versionTag = $('versionTag');
 const savedDotEl = $('savedDot');
 const savedLabelEl = $('savedLabel');
 
@@ -56,7 +57,12 @@ const exportDropdown = $('exportDropdown');
 const savedModal = $('savedModal');
 const shortcutsModal = $('shortcutsModal');
 const restoreModal = $('restoreModal');
+const versionModal = $('versionModal');
 const fileInput = $('fileInput');
+
+// User Profile Popover
+const userAvatarBtn = $('userAvatarBtn');
+const userProfilePopover = $('userProfilePopover');
 
 // Canvas Dock
 const panToolBtn = $('panToolBtn');
@@ -64,6 +70,12 @@ const selectToolBtn = $('selectToolBtn');
 const minimapToggleBtn = $('minimapToggleBtn');
 const gridToggleBtn = $('gridToggleBtn');
 const minimapContainer = $('minimapContainer');
+
+// Node Inspector HUD
+const nodeInspectorHud = $('nodeInspectorHud');
+const nodeHudLabel = $('nodeHudLabel');
+const nodeHudLocateBtn = $('nodeHudLocateBtn');
+const nodeHudCloseBtn = $('nodeHudCloseBtn');
 
 // State
 let activeTemplateId = 'dependency-overview';
@@ -75,6 +87,11 @@ let aiAssistant;
 let currentGridStyle = 'dots';
 let activeDrawer = null; // 'ai' | 'templates' | 'saved' | null
 let viewMode = 'split'; // 'split' | 'canvas' | 'editor'
+let currentToolMode = 'pan'; // 'pan' | 'select'
+let selectedNodeEl = null;
+
+let currentTemplateFilter = 'all';
+let currentTemplateQuery = '';
 
 // Initialize Application
 async function initApp() {
@@ -124,8 +141,12 @@ async function initApp() {
   // 5. Initialize Mermaid AI Assistant
   aiAssistant = new AIAssistant({
     container: aiDrawerContainer,
-    onApplyCode: (newCode) => {
+    onApplyCode: (newCode, promptTitle) => {
       editorCtrl.setValue(newCode);
+      if (promptTitle) {
+        activeDiagramTitle = promptTitle;
+        if (diagramTitleInput) diagramTitleInput.value = promptTitle;
+      }
       closeSidebarDrawer();
       setTimeout(() => canvasCtrl.fit(true), 150);
     },
@@ -155,20 +176,66 @@ async function initApp() {
     loadTemplate(activeTemplateId, false);
   }
 
-  // 8. Bind UI Events & Interactions
+  // 8. Setup Subsystems
+  setupNodeInspector();
+  setupVersionHistory();
+  setupUserProfile();
+
+  // 9. Bind UI Events & Interactions
   bindUIEvents();
   setupSplitter();
   setupMobileTabs();
+
+  // Initial minimap sync
+  setTimeout(() => {
+    if (minimapCtrl) minimapCtrl.update();
+  }, 300);
 }
 
-// Template Handling
+// Template Handling & Filter
 function setupTemplatesDrawer() {
+  renderTemplatesList();
+
+  const searchInput = $('templatesSearchInput');
+  if (searchInput) {
+    searchInput.addEventListener('input', (e) => {
+      currentTemplateQuery = e.target.value.toLowerCase().trim();
+      renderTemplatesList();
+    });
+  }
+
+  const chips = document.querySelectorAll('.tpl-filter-chip');
+  chips.forEach((chip) => {
+    chip.addEventListener('click', () => {
+      chips.forEach((c) => c.classList.remove('active'));
+      chip.classList.add('active');
+      currentTemplateFilter = chip.dataset.filter;
+      renderTemplatesList();
+    });
+  });
+}
+
+function renderTemplatesList() {
   const container = $('templatesList');
   if (!container) return;
   container.innerHTML = '';
 
+  const filtered = DIAGRAM_TEMPLATES.filter((tpl) => {
+    const matchesFilter = currentTemplateFilter === 'all' || tpl.category.toLowerCase().includes(currentTemplateFilter.toLowerCase());
+    const matchesQuery = !currentTemplateQuery || 
+      tpl.title.toLowerCase().includes(currentTemplateQuery) || 
+      tpl.description.toLowerCase().includes(currentTemplateQuery) || 
+      tpl.kind.toLowerCase().includes(currentTemplateQuery);
+    return matchesFilter && matchesQuery;
+  });
+
+  if (filtered.length === 0) {
+    container.innerHTML = '<div class="diagram-empty-state">No templates match your search.</div>';
+    return;
+  }
+
   const categories = {};
-  DIAGRAM_TEMPLATES.forEach((tpl) => {
+  filtered.forEach((tpl) => {
     if (!categories[tpl.category]) {
       categories[tpl.category] = [];
     }
@@ -344,6 +411,204 @@ function setViewMode(mode) {
   }
 }
 
+// Interactive Node Inspector (Select Tool)
+function setupNodeInspector() {
+  panToolBtn.addEventListener('click', () => {
+    currentToolMode = 'pan';
+    panToolBtn.classList.add('active');
+    selectToolBtn.classList.remove('active');
+    stageEl.classList.remove('select-mode');
+    clearSelectedNode();
+  });
+
+  selectToolBtn.addEventListener('click', () => {
+    currentToolMode = 'select';
+    selectToolBtn.classList.add('active');
+    panToolBtn.classList.remove('active');
+    stageEl.classList.add('select-mode');
+  });
+
+  // Clicking on canvas in select mode
+  diagramContainer.addEventListener('click', (e) => {
+    if (currentToolMode !== 'select') return;
+
+    const nodeEl = e.target.closest('.node, [class*="node"], .actor');
+    if (!nodeEl) {
+      clearSelectedNode();
+      return;
+    }
+
+    e.stopPropagation();
+    selectNode(nodeEl);
+  });
+
+  nodeHudCloseBtn?.addEventListener('click', clearSelectedNode);
+
+  nodeHudLocateBtn?.addEventListener('click', () => {
+    if (!selectedNodeEl) return;
+    const label = getNodeText(selectedNodeEl);
+    locateTextInEditor(label);
+  });
+}
+
+function selectNode(nodeEl) {
+  clearSelectedNode();
+  selectedNodeEl = nodeEl;
+  selectedNodeEl.classList.add('selected-node');
+
+  const label = getNodeText(nodeEl);
+  if (nodeInspectorHud && nodeHudLabel) {
+    nodeHudLabel.textContent = label;
+    nodeInspectorHud.style.display = 'flex';
+  }
+}
+
+function clearSelectedNode() {
+  if (selectedNodeEl) {
+    selectedNodeEl.classList.remove('selected-node');
+    selectedNodeEl = null;
+  }
+  if (nodeInspectorHud) {
+    nodeInspectorHud.style.display = 'none';
+  }
+}
+
+function getNodeText(nodeEl) {
+  const labelEl = nodeEl.querySelector('.nodeLabel, text');
+  let text = labelEl ? labelEl.textContent.trim() : nodeEl.textContent.trim();
+  if (!text) {
+    text = nodeEl.id ? nodeEl.id.replace(/^flowchart-|-[\d]+$/g, '') : 'Node';
+  }
+  return text;
+}
+
+function locateTextInEditor(text) {
+  if (!text) return;
+  const code = editorCtrl.getValue();
+  let idx = code.indexOf(text);
+  if (idx === -1) {
+    const firstWord = text.split(/[\s\[\(\{]+/)[0];
+    if (firstWord) idx = code.indexOf(firstWord);
+  }
+
+  if (idx !== -1) {
+    // If in canvas-only view, switch to split view so editor is visible
+    if (viewMode === 'canvas') {
+      setViewMode('split');
+    }
+    codeEditorEl.focus();
+    codeEditorEl.setSelectionRange(idx, idx + text.length);
+    const linesBefore = code.substring(0, idx).split('\n').length;
+    const lineHeight = 21;
+    codeEditorEl.scrollTop = Math.max(0, (linesBefore - 4) * lineHeight);
+    editorCtrl.updateStats();
+  }
+}
+
+// Version History & Snapshots
+function setupVersionHistory() {
+  versionTag?.addEventListener('click', () => {
+    refreshVersionList();
+    openModal('versionModal');
+  });
+
+  const saveSnapshotBtn = $('saveSnapshotBtn');
+  const newSnapshotLabel = $('newSnapshotLabel');
+
+  saveSnapshotBtn?.addEventListener('click', () => {
+    const list = StorageManager.getSnapshots();
+    const val = newSnapshotLabel.value.trim() || `v0.${list.length + 1}`;
+    StorageManager.saveSnapshot(val, activeDiagramTitle, editorCtrl.getValue());
+    newSnapshotLabel.value = '';
+    versionTag.textContent = val.split(' ')[0];
+    refreshVersionList();
+    updateProfileStats();
+  });
+}
+
+function refreshVersionList() {
+  const container = $('versionListContainer');
+  if (!container) return;
+  const list = StorageManager.getSnapshots();
+  container.innerHTML = '';
+
+  if (list.length === 0) {
+    container.innerHTML = '<div class="diagram-empty-state">No version snapshots saved yet. Create a snapshot above to preserve the current state.</div>';
+    return;
+  }
+
+  list.forEach((item) => {
+    const row = document.createElement('div');
+    row.className = 'version-item';
+    row.innerHTML = `
+      <div class="version-item-left">
+        <span class="version-pill-tag">${escapeHtml(item.version)}</span>
+        <div class="version-info">
+          <span class="version-title">${escapeHtml(item.title)}</span>
+          <span class="version-time">${new Date(item.createdAt).toLocaleString()}</span>
+        </div>
+      </div>
+      <div style="display: flex; gap: 6px;">
+        <button class="btn btn-sm btn-primary restore-snap-btn" type="button">Restore</button>
+        <button class="editor-tool-btn delete-snap-btn" type="button" title="Delete snapshot">🗑️</button>
+      </div>
+    `;
+
+    row.querySelector('.restore-snap-btn').addEventListener('click', () => {
+      editorCtrl.setValue(item.code);
+      activeDiagramTitle = item.title;
+      if (diagramTitleInput) diagramTitleInput.value = item.title;
+      if (versionTag) versionTag.textContent = item.version.split(' ')[0];
+      closeModal('versionModal');
+      setTimeout(() => canvasCtrl.fit(true), 120);
+    });
+
+    row.querySelector('.delete-snap-btn').addEventListener('click', () => {
+      StorageManager.deleteSnapshot(item.id);
+      refreshVersionList();
+      updateProfileStats();
+    });
+
+    container.appendChild(row);
+  });
+}
+
+// User Profile Popover
+function setupUserProfile() {
+  userAvatarBtn?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const isVisible = userProfilePopover.style.display === 'flex';
+    userProfilePopover.style.display = isVisible ? 'none' : 'flex';
+    if (!isVisible) updateProfileStats();
+  });
+
+  document.addEventListener('click', (e) => {
+    if (userProfilePopover && !userProfilePopover.contains(e.target) && e.target !== userAvatarBtn) {
+      userProfilePopover.style.display = 'none';
+    }
+  });
+
+  $('popoverViewSavedBtn')?.addEventListener('click', () => {
+    userProfilePopover.style.display = 'none';
+    refreshSavedList();
+    openModal('savedModal');
+  });
+
+  $('popoverShortcutsBtn')?.addEventListener('click', () => {
+    userProfilePopover.style.display = 'none';
+    openModal('shortcutsModal');
+  });
+
+  updateProfileStats();
+}
+
+function updateProfileStats() {
+  const savedCount = StorageManager.getSavedDiagrams().length;
+  const snapshotCount = StorageManager.getSnapshots().length;
+  if ($('statSavedCount')) $('statSavedCount').textContent = savedCount;
+  if ($('statSnapshotCount')) $('statSnapshotCount').textContent = snapshotCount;
+}
+
 // UI Event Bindings
 function bindUIEvents() {
   // Breadcrumb Title Rename
@@ -385,19 +650,6 @@ function bindUIEvents() {
   $('fitBtn').addEventListener('click', () => canvasCtrl.fit(true));
   $('recenterBtn').addEventListener('click', () => canvasCtrl.center(true));
   fullscreenBtn.addEventListener('click', () => canvasCtrl.toggleFullscreen());
-
-  // Tool Modes: Pan vs Select
-  panToolBtn.addEventListener('click', () => {
-    panToolBtn.classList.add('active');
-    selectToolBtn.classList.remove('active');
-    stageEl.classList.remove('select-mode');
-  });
-
-  selectToolBtn.addEventListener('click', () => {
-    selectToolBtn.classList.add('active');
-    panToolBtn.classList.remove('active');
-    stageEl.classList.add('select-mode');
-  });
 
   // Minimap Toggle
   minimapToggleBtn.addEventListener('click', () => {
@@ -534,6 +786,7 @@ function bindUIEvents() {
     activeDiagramTitle = title;
     diagramTitleInput.value = title;
     refreshSavedList();
+    updateProfileStats();
   });
 
   // Close modals on [data-close] or backdrop click
@@ -553,6 +806,8 @@ function bindUIEvents() {
 
   // Global Keyboard Shortcuts
   window.addEventListener('keydown', (e) => {
+    const isTyping = e.target.matches('input, textarea, [contenteditable="true"]');
+
     if ((e.ctrlKey || e.metaKey) && e.key === 's') {
       e.preventDefault();
       $('newDiagramTitle').value = activeDiagramTitle;
@@ -564,9 +819,26 @@ function bindUIEvents() {
     } else if (e.shiftKey && (e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'f') {
       e.preventDefault();
       editorCtrl.formatCode();
-    } else if (e.key === '?' && !e.target.matches('input,textarea')) {
+    } else if (e.key === '?' && !isTyping) {
       e.preventDefault();
       openModal('shortcutsModal');
+    } else if (!isTyping) {
+      if (e.key.toLowerCase() === 'f') {
+        e.preventDefault();
+        canvasCtrl.fit(true);
+      } else if (e.key.toLowerCase() === 'c') {
+        e.preventDefault();
+        canvasCtrl.center(true);
+      } else if (e.key === '0') {
+        e.preventDefault();
+        canvasCtrl.reset(true);
+      } else if (e.key === '+' || e.key === '=') {
+        e.preventDefault();
+        canvasCtrl.setZoom(canvasCtrl.zoom * 1.2);
+      } else if (e.key === '-' || e.key === '_') {
+        e.preventDefault();
+        canvasCtrl.setZoom(canvasCtrl.zoom / 1.2);
+      }
     }
   });
 }
@@ -631,6 +903,7 @@ function refreshDrawerSavedList() {
       e.stopPropagation();
       StorageManager.deleteDiagram(item.id);
       refreshDrawerSavedList();
+      updateProfileStats();
     });
 
     actions.appendChild(deleteBtn);
@@ -680,6 +953,7 @@ function refreshSavedList() {
       e.stopPropagation();
       StorageManager.deleteDiagram(item.id);
       refreshSavedList();
+      updateProfileStats();
     });
 
     actions.appendChild(deleteBtn);

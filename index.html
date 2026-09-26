@@ -113,9 +113,42 @@
 
         <input type="file" id="fileInput" accept=".mmd,.txt,.mermaid" style="display: none;" />
 
-        <!-- User Profile Avatar -->
-        <div class="user-avatar-btn" id="userAvatarBtn" title="Mohammad Zolfaghari">
-          MZ
+        <!-- User Profile Avatar & Popover -->
+        <div style="position: relative;">
+          <div class="user-avatar-btn" id="userAvatarBtn" title="Mohammad Zolfaghari">
+            MZ
+          </div>
+          <div id="userProfilePopover" class="profile-popover" style="display: none;">
+            <div class="profile-popover-header">
+              <div class="profile-avatar-lg">MZ</div>
+              <div class="profile-details">
+                <span class="profile-name">Mohammad Zolfaghari</span>
+                <span class="profile-email">muhamad.zolfaghari@gmail.com</span>
+                <span class="profile-badge">PRO / Local Storage</span>
+              </div>
+            </div>
+            <div class="profile-stats-row">
+              <div class="stat-item">
+                <span class="stat-value" id="statSavedCount">0</span>
+                <span class="stat-label">Saved Diagrams</span>
+              </div>
+              <div class="stat-item">
+                <span class="stat-value" id="statSnapshotCount">0</span>
+                <span class="stat-label">Version Snapshots</span>
+              </div>
+            </div>
+            <div class="profile-links-list">
+              <button class="profile-link-btn" id="popoverViewSavedBtn" type="button">
+                📁 Saved Diagrams Library
+              </button>
+              <button class="profile-link-btn" id="popoverShortcutsBtn" type="button">
+                ⌨️ Keyboard Shortcuts
+              </button>
+              <a class="profile-link-btn" href="https://github.com/muhamadzolfaghari/mermaid-studio" target="_blank" rel="noopener">
+                🐙 GitHub Repository ↗
+              </a>
+            </div>
+          </div>
         </div>
       </div>
     </header>
@@ -180,6 +213,15 @@
           <div class="drawer-header">
             <h2 class="drawer-title">Diagram Templates</h2>
             <button id="closeTemplatesDrawerBtn" class="drawer-close-btn" type="button" aria-label="Close templates drawer">✕</button>
+          </div>
+          <div class="drawer-search-wrap">
+            <input type="text" id="templatesSearchInput" class="form-input" style="height: 32px; font-size: 12px;" placeholder="🔍 Filter templates (flowchart, sequence, etc.)..." aria-label="Filter templates" />
+            <div class="template-filter-chips" id="templateFilterChips">
+              <button class="tpl-filter-chip active" data-filter="all" type="button">All</button>
+              <button class="tpl-filter-chip" data-filter="Architecture & Delivery" type="button">Architecture</button>
+              <button class="tpl-filter-chip" data-filter="Engineering & Systems" type="button">Systems</button>
+              <button class="tpl-filter-chip" data-filter="Data & Knowledge" type="button">Data</button>
+            </div>
           </div>
           <div class="drawer-content" id="templatesList"></div>
         </div>
@@ -250,6 +292,14 @@
           <div id="canvasAlert" class="canvas-alert error" role="alert">
             <span id="alertMessage" class="alert-message">Mermaid syntax error</span>
             <button id="alertCloseBtn" class="alert-close" type="button" aria-label="Dismiss error">✕</button>
+          </div>
+
+          <!-- Floating Node Inspector HUD -->
+          <div id="nodeInspectorHud" class="node-inspector-hud" style="display: none;">
+            <span class="node-hud-title">Selected Node:</span>
+            <span id="nodeHudLabel" class="node-hud-val">INFRA</span>
+            <button id="nodeHudLocateBtn" class="node-hud-action" type="button" title="Highlight definition in code editor">Locate in Code</button>
+            <button id="nodeHudCloseBtn" class="node-hud-action" type="button" title="Deselect" style="padding: 2px 7px;">✕</button>
           </div>
 
           <!-- Interactive Stage Viewport -->
@@ -379,6 +429,31 @@
         </div>
         <div class="modal-footer">
           <button class="btn btn-primary" data-close="shortcutsModal" type="button">Got it</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Version History Modal -->
+    <div id="versionModal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="versionModalTitle">
+      <div class="modal-card">
+        <div class="modal-header">
+          <h2 id="versionModalTitle" class="modal-title">Version History & Snapshots</h2>
+          <button class="modal-close-btn" data-close="versionModal" type="button" aria-label="Close modal">✕</button>
+        </div>
+        <div class="modal-body">
+          <div class="form-group">
+            <label class="form-label" for="newSnapshotLabel">Create Snapshot of Current Diagram</label>
+            <div style="display: flex; gap: 8px;">
+              <input type="text" id="newSnapshotLabel" class="form-input" placeholder="e.g. v0.2 - Before refactor" style="flex: 1;" />
+              <button id="saveSnapshotBtn" class="btn btn-primary" type="button">Save Snapshot</button>
+            </div>
+          </div>
+          <hr style="border: none; border-top: 1px solid var(--line); margin: 16px 0;" />
+          <h3 class="form-label">Saved Version Snapshots</h3>
+          <div id="versionListContainer" class="version-list" style="margin-top: 8px;"></div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn" data-close="versionModal" type="button">Close</button>
         </div>
       </div>
     </div>

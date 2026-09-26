@@ -151,7 +151,9 @@ export class AIAssistant {
     // Apply button
     this.container.querySelector('#aiApplyBtn').addEventListener('click', () => {
       if (this.generatedCode) {
-        this.onApplyCode(this.generatedCode);
+        const rawPrompt = this.promptInput.value.trim();
+        const title = rawPrompt ? (rawPrompt.length > 36 ? rawPrompt.slice(0, 34) + '…' : rawPrompt) : 'AI Generated Diagram';
+        this.onApplyCode(this.generatedCode, title);
       }
     });
 

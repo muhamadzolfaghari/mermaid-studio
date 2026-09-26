@@ -9,6 +9,7 @@ const STORAGE_KEYS = {
   THEME: 'mermaid_studio_theme_v1',
   GRID: 'mermaid_studio_grid_v1',
   ACTIVE_TEMPLATE: 'mermaid_studio_active_tpl_v1',
+  VERSIONS: 'mermaid_studio_versions_v1',
 };
 
 export class StorageManager {
@@ -82,6 +83,45 @@ export class StorageManager {
       localStorage.setItem(STORAGE_KEYS.SAVED_LIST, JSON.stringify(list));
     } catch (e) {
       console.error('Failed to delete diagram:', e);
+    }
+  }
+
+  // Version Snapshots
+  static getSnapshots() {
+    try {
+      const data = localStorage.getItem(STORAGE_KEYS.VERSIONS);
+      return data ? JSON.parse(data) : [];
+    } catch (_) {
+      return [];
+    }
+  }
+
+  static saveSnapshot(versionLabel, title, code) {
+    const list = this.getSnapshots();
+    const item = {
+      id: `snap_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+      version: versionLabel.trim() || `v0.${list.length + 1}`,
+      title: title.trim() || 'Untitled',
+      code,
+      createdAt: new Date().toISOString(),
+    };
+    list.unshift(item);
+    try {
+      localStorage.setItem(STORAGE_KEYS.VERSIONS, JSON.stringify(list));
+      return item;
+    } catch (e) {
+      console.error('Failed to save snapshot:', e);
+      throw e;
+    }
+  }
+
+  static deleteSnapshot(id) {
+    let list = this.getSnapshots();
+    list = list.filter((s) => s.id !== id);
+    try {
+      localStorage.setItem(STORAGE_KEYS.VERSIONS, JSON.stringify(list));
+    } catch (e) {
+      console.error('Failed to delete snapshot:', e);
     }
   }
 

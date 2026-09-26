@@ -448,6 +448,50 @@ input:focus-visible {
   border-bottom: 1px solid var(--line);
 }
 
+.drawer-search-wrap {
+  padding: 12px 16px 8px 16px;
+  border-bottom: 1px solid var(--line-subtle);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.template-filter-chips {
+  display: flex;
+  gap: 4px;
+  overflow-x: auto;
+  padding-bottom: 2px;
+  scrollbar-width: none;
+}
+
+.template-filter-chips::-webkit-scrollbar {
+  display: none;
+}
+
+.tpl-filter-chip {
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  color: var(--text-muted);
+  font-size: 10px;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.tpl-filter-chip:hover {
+  background: var(--surface-hover);
+  color: #fff;
+}
+
+.tpl-filter-chip.active {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: #fff;
+}
+
 .drawer-title {
   font-size: 14px;
   font-weight: 700;
