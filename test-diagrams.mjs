@@ -109,6 +109,123 @@ if (!fs.existsSync('./dist/index.html')) {
   }
 }
 
+// Test Group 5: Design System & CVA Components
+console.log('\n--- Test Group 5: Design System & CVA Components ---');
+try {
+  const {
+    cn,
+    buttonVariants,
+    badgeVariants,
+    cardVariants,
+    inputVariants,
+    createButton,
+    createBadge,
+  } = await import('./src/components/ui/index.js');
+
+  // 1. cn() utility tests
+  const mergedClass = cn('p-4 text-sm', false && 'hidden', 'text-white', 'p-2');
+  if (mergedClass.includes('p-2') && !mergedClass.includes('p-4') && mergedClass.includes('text-white')) {
+    console.log('✅ [Design System] cn() successfully handles conditionals and resolves Tailwind conflicts.');
+    passed++;
+  } else {
+    console.error('❌ [Design System] cn() failed conflict resolution:', mergedClass);
+    failed++;
+  }
+
+  // 2. buttonVariants tests
+  const defaultBtn = buttonVariants();
+  const aiBtn = buttonVariants({ variant: 'ai', size: 'sm' });
+  const destructiveBtn = buttonVariants({ variant: 'destructive', size: 'lg' });
+
+  if (
+    defaultBtn.includes('bg-primary') &&
+    aiBtn.includes('bg-gradient-to-r') &&
+    aiBtn.includes('h-8') &&
+    destructiveBtn.includes('bg-destructive') &&
+    destructiveBtn.includes('h-10')
+  ) {
+    console.log('✅ [Design System] buttonVariants correctly generates CVA variant & size classes.');
+    passed++;
+  } else {
+    console.error('❌ [Design System] buttonVariants generated unexpected classes.');
+    failed++;
+  }
+
+  // 3. badgeVariants tests
+  const aiBadge = badgeVariants({ variant: 'ai', size: 'sm' });
+  if (aiBadge.includes('border-indigo-500/40') && aiBadge.includes('text-[10px]')) {
+    console.log('✅ [Design System] badgeVariants correctly generates CVA badge classes.');
+    passed++;
+  } else {
+    console.error('❌ [Design System] badgeVariants failed:', aiBadge);
+    failed++;
+  }
+
+  // 4. inputVariants tests
+  const monoInput = inputVariants({ variant: 'mono' });
+  if (monoInput.includes('font-mono') && monoInput.includes('border-border')) {
+    console.log('✅ [Design System] inputVariants correctly generates CVA input classes.');
+    passed++;
+  } else {
+    console.error('❌ [Design System] inputVariants failed:', monoInput);
+    failed++;
+  }
+
+  // 5. cardVariants tests
+  const interactiveCard = cardVariants({ variant: 'interactive', padding: 'sm' });
+  if (interactiveCard.includes('hover:border-primary/50') && interactiveCard.includes('p-3')) {
+    console.log('✅ [Design System] cardVariants correctly generates CVA card classes.');
+    passed++;
+  } else {
+    console.error('❌ [Design System] cardVariants failed:', interactiveCard);
+    failed++;
+  }
+
+  // 6. createButton helper test
+  let clicked = false;
+  const domBtn = createButton({
+    variant: 'ai',
+    size: 'sm',
+    className: 'custom-extra-class',
+    content: '<span>Test AI</span>',
+    onClick: () => { clicked = true; },
+  });
+
+  domBtn.click();
+  if (
+    domBtn instanceof dom.window.HTMLButtonElement &&
+    domBtn.className.includes('custom-extra-class') &&
+    domBtn.className.includes('bg-gradient-to-r') &&
+    clicked === true
+  ) {
+    console.log('✅ [Design System] createButton() creates reactive, fully-styled DOM elements.');
+    passed++;
+  } else {
+    console.error('❌ [Design System] createButton() failed DOM test.');
+    failed++;
+  }
+
+  // 7. createBadge helper test
+  const domBadge = createBadge({
+    variant: 'success',
+    text: 'Active',
+  });
+  if (
+    domBadge instanceof dom.window.HTMLElement &&
+    domBadge.textContent === 'Active' &&
+    domBadge.className.includes('bg-emerald-500/10')
+  ) {
+    console.log('✅ [Design System] createBadge() creates valid styled badge DOM elements.');
+    passed++;
+  } else {
+    console.error('❌ [Design System] createBadge() failed DOM test.');
+    failed++;
+  }
+} catch (err) {
+  console.error('❌ [Design System] Component imports or test failed:', err);
+  failed++;
+}
+
 console.log(`\n========================================`);
 console.log(`Total checks passed: ${passed}, failed: ${failed}`);
 console.log(`========================================\n`);
@@ -116,3 +233,4 @@ console.log(`========================================\n`);
 if (failed > 0) {
   process.exit(1);
 }
+

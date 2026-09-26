@@ -6,6 +6,15 @@ import { Exporter } from './components/exporter.js';
 import { AIAssistant } from './components/ai-assistant.js';
 import { MiniMapController } from './components/minimap.js';
 import { initMermaid, renderMermaid, setMermaidTheme } from './utils/mermaid-renderer.js';
+import {
+  buttonVariants,
+  badgeVariants,
+  cardVariants,
+  inputVariants,
+  createButton,
+  createBadge,
+  cn,
+} from './components/ui/index.js';
 
 // DOM Elements
 const $ = (id) => document.getElementById(id);
@@ -250,13 +259,14 @@ function renderTemplatesList() {
 
     items.forEach((item) => {
       const card = document.createElement('div');
-      card.className = 'diagram-item';
+      card.className = cn(cardVariants({ variant: 'interactive', padding: 'sm' }), 'diagram-item');
       card.style.cursor = 'pointer';
+      const kindBadgeClass = badgeVariants({ variant: 'ai', size: 'sm' });
       card.innerHTML = `
         <div class="diagram-item-info">
           <div style="display: flex; align-items: center; gap: 6px;">
-            <span class="pill-kind">${item.kind}</span>
-            <span class="diagram-item-name">${escapeHtml(item.title)}</span>
+            <span class="${kindBadgeClass}">${item.kind}</span>
+            <span class="diagram-item-name font-medium text-foreground">${escapeHtml(item.title)}</span>
           </div>
           <div class="diagram-item-date" style="margin-top: 4px;">${escapeHtml(item.description)}</div>
         </div>
@@ -539,36 +549,60 @@ function refreshVersionList() {
 
   list.forEach((item) => {
     const row = document.createElement('div');
-    row.className = 'version-item';
-    row.innerHTML = `
-      <div class="version-item-left">
-        <span class="version-pill-tag">${escapeHtml(item.version)}</span>
-        <div class="version-info">
-          <span class="version-title">${escapeHtml(item.title)}</span>
-          <span class="version-time">${new Date(item.createdAt).toLocaleString()}</span>
-        </div>
-      </div>
-      <div style="display: flex; gap: 6px;">
-        <button class="btn btn-sm btn-primary restore-snap-btn" type="button">Restore</button>
-        <button class="editor-tool-btn delete-snap-btn" type="button" title="Delete snapshot">🗑️</button>
-      </div>
+    row.className = cn(cardVariants({ variant: 'interactive', padding: 'sm' }), 'version-item');
+
+    const left = document.createElement('div');
+    left.className = 'version-item-left flex items-center gap-3';
+
+    const tagSpan = document.createElement('span');
+    tagSpan.className = badgeVariants({ variant: 'outline', size: 'sm' });
+    tagSpan.textContent = item.version;
+
+    const info = document.createElement('div');
+    info.className = 'version-info';
+    info.innerHTML = `
+      <span class="version-title font-medium text-foreground">${escapeHtml(item.title)}</span>
+      <span class="version-time text-xs text-muted-foreground">${new Date(item.createdAt).toLocaleString()}</span>
     `;
 
-    row.querySelector('.restore-snap-btn').addEventListener('click', () => {
-      editorCtrl.setValue(item.code);
-      activeDiagramTitle = item.title;
-      if (diagramTitleInput) diagramTitleInput.value = item.title;
-      if (versionTag) versionTag.textContent = item.version.split(' ')[0];
-      closeModal('versionModal');
-      setTimeout(() => canvasCtrl.fit(true), 120);
+    left.appendChild(tagSpan);
+    left.appendChild(info);
+
+    const right = document.createElement('div');
+    right.className = 'flex items-center gap-2';
+
+    const restoreBtn = createButton({
+      variant: 'default',
+      size: 'xs',
+      content: 'Restore',
+      onClick: () => {
+        editorCtrl.setValue(item.code);
+        activeDiagramTitle = item.title;
+        if (diagramTitleInput) diagramTitleInput.value = item.title;
+        if (versionTag) versionTag.textContent = item.version.split(' ')[0];
+        closeModal('versionModal');
+        setTimeout(() => canvasCtrl.fit(true), 120);
+      },
     });
 
-    row.querySelector('.delete-snap-btn').addEventListener('click', () => {
-      StorageManager.deleteSnapshot(item.id);
-      refreshVersionList();
-      updateProfileStats();
+    const deleteBtn = createButton({
+      variant: 'ghost',
+      size: 'icon-sm',
+      className: 'text-muted-foreground hover:text-destructive hover:bg-destructive/10',
+      content: '🗑️',
+      attributes: { title: 'Delete snapshot' },
+      onClick: () => {
+        StorageManager.deleteSnapshot(item.id);
+        refreshVersionList();
+        updateProfileStats();
+      },
     });
 
+    right.appendChild(restoreBtn);
+    right.appendChild(deleteBtn);
+
+    row.appendChild(left);
+    row.appendChild(right);
     container.appendChild(row);
   });
 }
@@ -876,12 +910,12 @@ function refreshDrawerSavedList() {
 
   diagrams.forEach((item) => {
     const row = document.createElement('div');
-    row.className = 'diagram-item';
+    row.className = cn(cardVariants({ variant: 'interactive', padding: 'sm' }), 'diagram-item');
 
     const info = document.createElement('div');
     info.className = 'diagram-item-info';
     info.innerHTML = `
-      <div class="diagram-item-name">${escapeHtml(item.title)}</div>
+      <div class="diagram-item-name font-medium text-foreground">${escapeHtml(item.title)}</div>
       <div class="diagram-item-date">${new Date(item.updatedAt).toLocaleString()}</div>
     `;
     info.addEventListener('click', () => {
@@ -895,15 +929,18 @@ function refreshDrawerSavedList() {
     const actions = document.createElement('div');
     actions.className = 'diagram-item-actions';
 
-    const deleteBtn = document.createElement('button');
-    deleteBtn.className = 'editor-tool-btn';
-    deleteBtn.title = 'Delete saved diagram';
-    deleteBtn.textContent = '🗑️';
-    deleteBtn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      StorageManager.deleteDiagram(item.id);
-      refreshDrawerSavedList();
-      updateProfileStats();
+    const deleteBtn = createButton({
+      variant: 'ghost',
+      size: 'icon-sm',
+      className: 'text-muted-foreground hover:text-destructive hover:bg-destructive/10',
+      content: '🗑️',
+      attributes: { title: 'Delete saved diagram' },
+      onClick: (e) => {
+        e.stopPropagation();
+        StorageManager.deleteDiagram(item.id);
+        refreshDrawerSavedList();
+        updateProfileStats();
+      },
     });
 
     actions.appendChild(deleteBtn);
